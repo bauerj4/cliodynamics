@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "crisiswatch-agent"
+version = "0.1.0"
+description = "A RAG-powered agent for geopolitical trends based on CrisisWatch."
+authors = ["Jake Bauer <j.bauer@nazo.ai>"]
+readme = "README.md"
+packages = [{ include = "crisiswatch_agent" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+smolagent = "*"
+requests = "*"
+beautifulsoup4 = "*"
+faiss-cpu = "*"
+sentence-transformers = "*"
+sqlite-utils = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+cliodynamics = { path = "../cliodynamics" }

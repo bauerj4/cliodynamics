@@ -1,4 +1,4 @@
-from cliodynamics.base import DynamicalSystem
+from cliodynamics.system.base import DynamicalSystem
 
 from typing import Tuple, List
 
@@ -92,3 +92,101 @@ class SDTModel(DynamicalSystem):
         )
 
         return [d_population_dt, d_resources_per_capita_dt, d_elite_wealth_dt]
+
+
+class RetrospectiveSDTModel(DynamicalSystem):
+    """
+    Structural-Demographic Theory (SDT) model based on the retrospective analysis of the 2010–2020 forecast.
+    Includes additional dynamics like elite overproduction, economic distress, and socio-political stress.
+
+    References
+    ----------
+    Turchin, P. et al. (2020). "The 2010 Structural-Demographic Forecast for the 2010–2020 Decade: A Retrospective Assessment."
+
+    Attributes
+    ----------
+    birth_rate : float
+        Natural growth rate of the population.
+    death_rate : float
+        Baseline death rate for the population.
+    elite_overproduction_rate : float
+        Growth rate of the elite population.
+    economic_inequality_rate : float
+        Rate at which economic inequality impacts social stress.
+    socio_political_stress_rate : float
+        Rate at which socio-political stress escalates in response to inequality and elite competition.
+
+    Methods
+    -------
+    system_equations(t, y)
+        Defines the differential equations for the Retrospective SDT model.
+    """
+
+    def __init__(
+        self,
+        initial_conditions: List[float],
+        time_span: Tuple[float, float],
+        time_points: np.ndarray,
+        birth_rate: float,
+        death_rate: float,
+        elite_overproduction_rate: float,
+        economic_inequality_rate: float,
+        socio_political_stress_rate: float,
+    ):
+        super().__init__(initial_conditions, time_span, time_points)
+        self.birth_rate = birth_rate
+        self.death_rate = death_rate
+        self.elite_overproduction_rate = elite_overproduction_rate
+        self.economic_inequality_rate = economic_inequality_rate
+        self.socio_political_stress_rate = socio_political_stress_rate
+
+    def system_equations(self, t: float, y: List[float]) -> List[float]:
+        """
+        Defines the differential equations for the Retrospective SDT model.
+
+        Parameters
+        ----------
+        t : float
+            Current time in the integration.
+        y : list of float
+            Current values of [population, economic inequality, elite population, socio-political stress].
+
+        Returns
+        -------
+        list of float
+            Derivatives [d_population/dt, d_economic_inequality/dt, d_elite_population/dt, d_socio_political_stress/dt].
+        """
+        population, economic_inequality, elite_population, socio_political_stress = (
+            y  # Unpack variables
+        )
+
+        # Population dynamics
+        d_population_dt = (
+            self.birth_rate * population * (1 - population / (1 + economic_inequality))
+            - self.death_rate * population
+        )
+
+        # Economic inequality dynamics
+        d_economic_inequality_dt = (
+            self.economic_inequality_rate * (population - elite_population)
+            - 0.05 * economic_inequality
+        )
+
+        # Elite overproduction dynamics
+        d_elite_population_dt = (
+            self.elite_overproduction_rate * elite_population
+            - 0.02 * elite_population * population / (1 + socio_political_stress)
+        )
+
+        # Socio-political stress dynamics
+        d_socio_political_stress_dt = (
+            self.socio_political_stress_rate * (economic_inequality + elite_population)
+            - 0.01 * socio_political_stress
+        )
+
+        return [
+            d_population_dt,
+            d_economic_inequality_dt,
+            d_elite_population_dt,
+            d_socio_political_stress_dt,
+        ]

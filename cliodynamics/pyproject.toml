@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "cliodynamics"
+version = "0.1.0"
+description = "Package that examines solutions to cliodynamical systems models."
+authors = ["Jake Bauer <j.bauer@nazo.ai>"]
+readme = "README.md"
+packages = [{ include = "cliodynamics" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+scipy = "^1.14.1"
+matplotlib = "^3.9.2"
+black = "^24.10.0"
+jupyter = "^1.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

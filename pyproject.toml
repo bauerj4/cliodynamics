@@ -1,16 +1,27 @@
 [tool.poetry]
-name = "cliodynamics"
+name = "geopolitical-analysis"
 version = "0.1.0"
-description = "Package that examines solutions to Cliodynamical systems models."
+description = "Unified package with cliodynamics models and CrisisWatch agent tools."
 authors = ["Jake Bauer <j.bauer@nazo.ai>"]
 readme = "README.md"
+packages = [
+    { include = "cliodynamics" },
+    { include = "crisiswatch_agent" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 scipy = "^1.14.1"
 matplotlib = "^3.9.2"
 black = "^24.10.0"
-
+jupyter = "^1.1.1"
+requests = "*"
+beautifulsoup4 = "*"
+faiss-cpu = "*"
+sentence-transformers = "*"
+sqlite-utils = "*"
+smolagents = "^1.20.0"
+accelerate = "^1.8.1"
 
 [build-system]
 requires = ["poetry-core"]
