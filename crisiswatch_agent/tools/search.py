@@ -1,4 +1,8 @@
-from crisiswatch_agent.rag.embeddings import embed_text, build_faiss_index
+from crisiswatch_agent.rag.embeddings import (
+    embed_text,
+    build_faiss_index,
+    update_embeddings,
+)
 import numpy as np
 import sqlite3
 from typing import List
@@ -21,8 +25,11 @@ def search_reports_rag(
         A list of matching report IDs ranked by relevance to the query.
     """
     vec = embed_text(query)
+    update_embeddings(db_path=db_path)
     index = build_faiss_index(db_path=db_path)
+    import pdb
 
+    pdb.set_trace()
     if index.ntotal == 0:
         return ["Index is empty. Run fetch_crisiswatch_data first."]
 

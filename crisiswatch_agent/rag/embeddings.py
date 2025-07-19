@@ -2,6 +2,7 @@ import sqlite3
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 embedding_model = SentenceTransformer(MODEL_NAME)
@@ -18,18 +19,21 @@ def update_embeddings(db_path: str = "crisiswatch.db"):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, summary FROM reports
+        SELECT id, text FROM reports
         WHERE id NOT IN (SELECT report_id FROM embeddings)
     """
     )
     rows = cur.fetchall()
-    for rid, summary in rows:
-        vec = embed_text(summary)
+    for rid, text in tqdm(rows, desc="embedding no."):
+        vec = embed_text(text)
+        print(vec)
         cur.execute(
             "INSERT INTO embeddings (report_id, embedding) VALUES (?, ?)",
             (rid, vec.tobytes()),
         )
     conn.commit()
+    embs = cur.execute("SELECT * FROM embeddings;")
+    print(embs.fetchall())
     conn.close()
 
 
@@ -38,6 +42,10 @@ def build_faiss_index(db_path: str = "crisiswatch.db") -> faiss.IndexFlatIP:
     cur = conn.cursor()
     cur.execute("SELECT report_id, embedding FROM embeddings")
     rows = cur.fetchall()
+    import pdb
+
+    pdb.set_trace()
+
     conn.close()
 
     if not rows:

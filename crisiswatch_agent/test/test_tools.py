@@ -1,113 +1,106 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from crisiswatch_agent.tools.fetch import fetch_crisiswatch_data
+from crisiswatch_agent.tools.fetch import prepopulate_from_urls
 from crisiswatch_agent.tools.search import search_reports_rag
 from crisiswatch_agent.tools.summarize import summarize_reports
 import os
+import tempfile
 import sqlite3
-
-TEST_DB_PATH = "test_crisiswatch.db"
+import fitz  # PyMuPDF
 
 
 class TestCrisisWatchTools(unittest.TestCase):
-
     def setUp(self):
-        if os.path.exists(TEST_DB_PATH):
-            os.remove(TEST_DB_PATH)
-
-        # Create required tables for all tests
-        conn = sqlite3.connect(TEST_DB_PATH)
+        self.test_db_fd, self.test_db_path = tempfile.mkstemp(suffix=".db")
+        conn = sqlite3.connect(self.test_db_path)
         cur = conn.cursor()
         cur.execute(
             """
-            CREATE TABLE reports (
-                id TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT,
                 title TEXT,
-                summary TEXT,
-                region TEXT
-            )
+                url TEXT,
+                text TEXT,
+                region TEXT,
+                summary TEXT
+            );
         """
         )
         cur.execute(
             """
-            CREATE TABLE embeddings (
-                report_id TEXT PRIMARY KEY,
-                embedding BLOB
-            )
-        """
+            CREATE TABLE IF NOT EXISTS embeddings (
+                report_id INTEGER PRIMARY KEY,
+                embedding BLOB,
+                FOREIGN KEY(report_id) REFERENCES reports(id)
+            );
+            """
         )
+
         conn.commit()
         conn.close()
 
     def tearDown(self):
-        if os.path.exists(TEST_DB_PATH):
-            os.remove(TEST_DB_PATH)
+        os.close(self.test_db_fd)
+        os.remove(self.test_db_path)
 
-    @patch("crisiswatch_agent.tools.fetch.requests.get")
-    def test_fetch_and_cache_crisis_data(self, mock_get):
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.text = """<html><body><div class='views-row'>
-        <span class='date-display-single'>July 2023</span>
-        <a href='/report/123'>Conflict in Region A</a>
-        <div class='field-content'>Summary of Region A</div>
-        </div></body></html>"""
+    def generate_sample_pdf_bytes(self) -> bytes:
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "This is a test CrisisWatch report.")
+        pdf_bytes = doc.write()
+        doc.close()
+        return pdf_bytes
 
-        fetch_crisiswatch_data(db_path=TEST_DB_PATH)
+    def test_prepopulate_from_urls(self):
 
-        conn = sqlite3.connect(TEST_DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM reports")
-        rows = cursor.fetchall()
+        sample_pdf = self.generate_sample_pdf_bytes()
+        test_url = "https://www.crisisgroup.org/sites/default/files/crisiswatch/crisiswatch-june-2025-global-overview.pdf"
 
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0][1], "July 2023")
-        conn.close()
+        with patch("requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.content = sample_pdf
+            result = prepopulate_from_urls([test_url], db_path=self.test_db_path)
 
-    def test_query_reports(self):
-        # Setup sample database
-        conn = sqlite3.connect(TEST_DB_PATH)
-        cursor = conn.cursor()
-        # cursor.execute("CREATE TABLE reports (id TEXT PRIMARY KEY, date TEXT, title TEXT, summary TEXT)")
-        cursor.execute(
-            "INSERT INTO reports (id, date, title, summary, region) VALUES (?, ?, ?, ?, ?)",
-            ("1", "July 2023", "Conflict", "Some summary", "Region A"),
-        )
-        conn.commit()
-        conn.close()
+            self.assertIn("Added 1 reports", result)
+            self.assertIn("skipped 0", result)
 
-        results = search_reports_rag("Conflict", db_path=TEST_DB_PATH)
+            conn = sqlite3.connect(self.test_db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT title, date, url, text FROM reports")
+            rows = cursor.fetchall()
+            conn.close()
 
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["title"], "Conflict")
+            self.assertEqual(len(rows), 1)
+            title, date, url, text = rows[0]
+            self.assertIn("June 2025", title)
+            self.assertEqual("2025-06-01", date)
+            self.assertEqual(test_url, url)
+            self.assertIn("This is a test CrisisWatch report.", text)
 
     @patch("crisiswatch_agent.tools.search.embed_text")
     def test_search_reports_rag(self, mock_embed):
-        # Mock embeddings
-        mock_embed.return_value = [[0.1, 0.2, 0.3]]
+        mock_embed.return_value = [[0.1] * 384]
 
-        conn = sqlite3.connect(TEST_DB_PATH)
+        conn = sqlite3.connect(self.test_db_path)
         cursor = conn.cursor()
-        # cursor.execute("CREATE TABLE reports (id TEXT PRIMARY KEY, date TEXT, title TEXT, summary TEXT)")
-        # cursor.execute("INSERT INTO reports VALUES (?, ?, ?, ?)", ("1", "July 2023", "Region A", "A summary"))
         cursor.execute(
-            "INSERT INTO reports (id, date, title, summary, region) VALUES (?, ?, ?, ?, ?)",
-            ("1", "July 2023", "Conflict", "Some summary", "Region A"),
+            "INSERT OR REPLACE INTO reports (date, title, url, text) VALUES (?, ?, ?, ?)",
+            ("2023-07-01", "Conflict in A", "url", "text"),
         )
         conn.commit()
         conn.close()
 
-        with patch("crisiswatch_agent.tools.search.embed_text") as mock_embed:
-            mock_embed.side_effect = lambda text: [[0.1, 0.2, 0.3]]
-            result = search_reports_rag("conflict", top_k=1, db_path=TEST_DB_PATH)
-            self.assertIn("1", result)
+        result = search_reports_rag("Conflict", top_k=1, db_path=self.test_db_path)
+        self.assertIsInstance(result, list)
+        self.assertEqual(result[0]["title"], "Conflict in A")
 
     def test_summarize_reports(self):
-        summaries = [
+        sample_reports = [
             {"title": "Conflict in X", "summary": "Escalating violence in X."},
             {"title": "Conflict in Y", "summary": "Political unrest in Y."},
         ]
-        result = summarize_reports(summaries, db_path=TEST_DB_PATH)
+        result = summarize_reports(sample_reports, db_path=self.test_db_path)
         self.assertIn("X", result)
         self.assertIn("Y", result)
 

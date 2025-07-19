@@ -5,7 +5,9 @@ from .tools.search import search_reports_rag
 from .tools.summarize import summarize_reports
 
 
-def create_agent(model: Literal["openai", "smollm"] = "openai") -> CodeAgent:
+def create_agent(
+    model: Literal["openai", "smollm"] = "openai", db_path: str = "crisiswatch.db"
+) -> CodeAgent:
     """
     Creates the CrisisWatchAgent with the appropriate model backend.
 
@@ -19,6 +21,9 @@ def create_agent(model: Literal["openai", "smollm"] = "openai") -> CodeAgent:
     CodeAgent
         The configured agent.
     """
+
+    init_db(db_path=db_path)
+
     if model == "smollm":
         from smolagents import TransformersModel
 
