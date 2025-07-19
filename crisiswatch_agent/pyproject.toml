@@ -8,16 +8,14 @@ packages = [{ include = "crisiswatch_agent" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-smolagent = "*"
+smolagents = "*"
 requests = "*"
 beautifulsoup4 = "*"
 faiss-cpu = "*"
 sentence-transformers = "*"
 sqlite-utils = "*"
+cliodynamics = { path = "../cliodynamics" }
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.dependencies]
-cliodynamics = { path = "../cliodynamics" }

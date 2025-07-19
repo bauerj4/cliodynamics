@@ -1,4 +1,4 @@
-from ..rag.embeddings import embed_text, build_faiss_index
+from crisiswatch_agent.rag.embeddings import embed_text, build_faiss_index
 import numpy as np
 import sqlite3
 from typing import List
@@ -6,23 +6,22 @@ from smolagents import tool
 
 
 @tool
-def search_reports_rag(query: str, top_k: int = 5) -> List[str]:
+def search_reports_rag(
+    query: str, top_k: int = 5, db_path: str = "crisiswatch.db"
+) -> List[str]:
     """
-    Semantic RAG search for reports.
+    description: Searches cached reports using a RAG-based approach by embedding the query and retrieving similar documents.
 
-    Parameters
-    ----------
-    query : str
-      The description of the documents to retrieve
-    top_k : int
-      The number of documents to retreive.
+    Args:
+        query: A natural language query to match relevant CrisisWatch reports.
+        top_k: The number of top-matching reports to return.
+        db_path: The path to the database in which to cache results.
 
-    Returns
-    -------
-    List[str]
+    Returns:
+        A list of matching report IDs ranked by relevance to the query.
     """
     vec = embed_text(query)
-    index = build_faiss_index()
+    index = build_faiss_index(db_path=db_path)
 
     if index.ntotal == 0:
         return ["Index is empty. Run fetch_crisiswatch_data first."]
@@ -30,7 +29,7 @@ def search_reports_rag(query: str, top_k: int = 5) -> List[str]:
     scores, ids = index.search(np.expand_dims(vec, axis=0), top_k)
     ids = ids[0]
 
-    conn = sqlite3.connect("crisiswatch.db")
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
     results = []
     for report_id in ids:

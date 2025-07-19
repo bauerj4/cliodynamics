@@ -21,6 +21,7 @@ def create_agent(model: Literal["openai", "smollm"] = "openai") -> CodeAgent:
     """
     if model == "smollm":
         from smolagents import TransformersModel
+
         backend = TransformersModel("HuggingFaceTB/SmolLM-360M-Instruct")
         return CodeAgent(
             name="CrisisWatchAgent",

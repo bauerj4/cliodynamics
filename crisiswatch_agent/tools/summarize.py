@@ -8,23 +8,26 @@ embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 @tool
-def summarize_reports(region: Optional[str] = None) -> str:
+def summarize_reports(
+    region: Optional[str] = None, db_path: str = "crisiswatch.db"
+) -> str:
     """
-    Summarizes recent crisis reports.
+    description: Generates a high-level summary of recent CrisisWatch reports, grouped by region.
 
-    Parameters
-    ----------
-    region : str, optional
+    Args:
+        region: (Optional) If provided, only summarize reports from this region.
+        db_path: The path to the database in which to insert the reports.
 
-    Returns
-    -------
-    str
+    Returns:
+        A markdown-formatted summary of key events across regions.
     """
-    conn = sqlite3.connect("crisiswatch.db")
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
     if region:
-        cur.execute("SELECT region, summary FROM reports WHERE region LIKE ?", (f"%{region}%",))
+        cur.execute(
+            "SELECT region, summary FROM reports WHERE region LIKE ?", (f"%{region}%",)
+        )
     else:
         cur.execute("SELECT region, summary FROM reports")
 

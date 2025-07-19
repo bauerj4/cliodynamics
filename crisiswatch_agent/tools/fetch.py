@@ -7,11 +7,13 @@ from smolagents import tool
 
 DB_PATH = "crisiswatch.db"
 
+
 def init_db():
     """Initializes SQLite DB and creates tables."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS reports (
             id INTEGER PRIMARY KEY,
             title TEXT,
@@ -21,26 +23,31 @@ def init_db():
             countries TEXT,
             summary TEXT
         )
-    """)
-    cur.execute("""
+    """
+    )
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS embeddings (
             report_id INTEGER PRIMARY KEY,
             embedding BLOB,
             FOREIGN KEY(report_id) REFERENCES reports(id)
         )
-    """)
+    """
+    )
     conn.commit()
     conn.close()
 
-@tool
-def fetch_crisiswatch_data() -> str:
-    """
-    Fetches new reports from CrisisWatch and stores in DB.
 
-    Returns
-    -------
-    str
-        Message about the number of new entries added.
+@tool
+def fetch_crisiswatch_data(db_path: str = "crisiswatch.db") -> str:
+    """
+    description: Scrapes CrisisWatch data and stores new reports in a local SQLite database.
+
+    Args:
+        db_path: The path of the database in which to insert results into.
+
+    Returns:
+        A message indicating how many new entries were added.
     """
     url = "https://www.crisisgroup.org/crisiswatch/database"
     response = requests.get(url)
@@ -50,10 +57,9 @@ def fetch_crisiswatch_data() -> str:
     soup = BeautifulSoup(response.text, "html.parser")
     reports = soup.select(".views-row")
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
     new_entries = 0
-
     for report in reports:
         try:
             title = report.select_one("h3").get_text(strip=True)
@@ -66,15 +72,18 @@ def fetch_crisiswatch_data() -> str:
             countries = report.select_one(".crisiswatch-country").get_text(strip=True)
             summary = report.select_one(".crisiswatch-summary").get_text(strip=True)
 
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO reports (title, url, date, region, countries, summary)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (title, link, date, region, countries, summary))
+            """,
+                (title, link, date, region, countries, summary),
+            )
             new_entries += 1
         except Exception:
             continue
 
     conn.commit()
     conn.close()
-    update_embeddings()
+    update_embeddings(db_path=db_path)
     return f"Fetched and stored {new_entries} new entries."
