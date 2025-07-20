@@ -21,9 +21,9 @@ def init_db(db_path: str = "crisiswatch.db"):
         """
         CREATE TABLE IF NOT EXISTS reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
             date TEXT,
-            url TEXT UNIQUE,
+            title TEXT,
+            url TEXT,
             text TEXT,
             region TEXT,
             summary TEXT
@@ -66,9 +66,9 @@ def prepopulate_from_urls(
         """
         CREATE TABLE IF NOT EXISTS reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
             date TEXT,
-            url TEXT UNIQUE,
+            title TEXT,
+            url TEXT,
             text TEXT,
             region TEXT,
             summary TEXT

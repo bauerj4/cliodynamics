@@ -27,22 +27,40 @@ def search_reports_rag(
     vec = embed_text(query)
     update_embeddings(db_path=db_path)
     index = build_faiss_index(db_path=db_path)
-    import pdb
-
-    pdb.set_trace()
     if index.ntotal == 0:
         return ["Index is empty. Run fetch_crisiswatch_data first."]
 
-    scores, ids = index.search(np.expand_dims(vec, axis=0), top_k)
-    ids = ids[0]
-
+    scores, result_ids = index.search(np.array(vec), top_k)
+    result_ids = result_ids[0]
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
-    results = []
-    for report_id in ids:
-        cur.execute("SELECT url FROM reports WHERE id = ?", (int(report_id),))
+
+    ids = []
+    texts = []
+    dates = []
+    titles = []
+    urls = []
+    regions = []
+    summaries = []
+    for report_id in result_ids:
+        cur.execute("SELECT * FROM reports WHERE id = ?", (int(report_id),))
         row = cur.fetchone()
         if row:
-            results.append(row[0])
+            ids.append(row[0])
+            dates.append(row[1])
+            titles.append(row[2])
+            urls.append(row[3])
+            texts.append(row[4])
+            regions.append(row[5])
+            summaries.append(row[6])
+
     conn.close()
-    return results
+    return {
+        "ids": ids,
+        "titles": titles,
+        "dates": dates,
+        "urls": urls,
+        "texts": texts,
+        "regions": regions,
+        "summaries": summaries,
+    }

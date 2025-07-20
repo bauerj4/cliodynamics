@@ -42,10 +42,6 @@ def build_faiss_index(db_path: str = "crisiswatch.db") -> faiss.IndexFlatIP:
     cur = conn.cursor()
     cur.execute("SELECT report_id, embedding FROM embeddings")
     rows = cur.fetchall()
-    import pdb
-
-    pdb.set_trace()
-
     conn.close()
 
     if not rows:

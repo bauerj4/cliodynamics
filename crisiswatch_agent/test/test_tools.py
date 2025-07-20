@@ -9,6 +9,9 @@ import sqlite3
 import fitz  # PyMuPDF
 
 
+CORRECT_SUMMARY = """Here is a summary of the CrisisWatch reports:\n\n**Conflict in X:**\n\n* Escalating violence in X, with reports of increased fighting and casualties.\n* The conflict has been ongoing for several months, with multiple factions vying for control of the region.\n* The United Nations has deployed troops to X to support the local authorities and provide humanitarian aid.\n* The situation remains volatile, with reports of rocket attacks and ambushes.\n\n**Conflict in Y:**\n\n* Political unrest in Y, with protests and demonstrations erupting in response to economic sanctions and political repression.\n* The government has been accused of human rights abuses and corruption, with many citizens feeling disillusioned with the ruling party.\n* The international community has been criticized for its response to the crisis, with some countries imposing economic sanctions and others providing military aid.\n* The situation remains tense, with reports of clashes between protesters and security forces.\n\n**Crisis in Z:**\n\n* A series of natural disasters have struck the region, including a devastating earthquake in Z, which has killed hundreds of people and destroyed entire communities.\n* The government has been accused of mismanaging the disaster response, with many areas still recovering from the initial impact.\n* The international community has been criticized for its response to the crisis, with some countries imposing economic sanctions and others providing humanitarian aid.\n* The situation remains unstable, with reports of looting and violence in some areas"""
+
+
 class TestCrisisWatchTools(unittest.TestCase):
     def setUp(self):
         self.test_db_fd, self.test_db_path = tempfile.mkstemp(suffix=".db")
@@ -92,17 +95,19 @@ class TestCrisisWatchTools(unittest.TestCase):
         conn.close()
 
         result = search_reports_rag("Conflict", top_k=1, db_path=self.test_db_path)
-        self.assertIsInstance(result, list)
-        self.assertEqual(result[0]["title"], "Conflict in A")
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["titles"][0], "Conflict in A")
 
     def test_summarize_reports(self):
         sample_reports = [
             {"title": "Conflict in X", "summary": "Escalating violence in X."},
             {"title": "Conflict in Y", "summary": "Political unrest in Y."},
         ]
-        result = summarize_reports(sample_reports, db_path=self.test_db_path)
-        self.assertIn("X", result)
-        self.assertIn("Y", result)
+        result = summarize_reports(
+            sample_reports, db_path=self.test_db_path, do_sample=False
+        )
+        self.assertIsInstance(result, str)
+        self.assertAlmostEqual(result, CORRECT_SUMMARY)
 
 
 if __name__ == "__main__":
